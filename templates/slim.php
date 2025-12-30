@@ -1,4 +1,7 @@
 <?php
+if ( ! defined( 'ABSPATH' ) ) { exit; }
+?>
+<?php
 // SLIM single-request template: no wp_head/wp_footer, no external assets.
 ?><!doctype html><html lang="en">
 <head>
@@ -6,8 +9,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="slim-profile" content="SLIM v1.0">
   <?php
-    $canon = is_singular() ? get_permalink(get_queried_object_id()) : home_url(add_query_arg(null, null));
-    echo '<link rel="canonical" href="' . esc_url($canon) . '">';
+    $slimpress_canon = is_singular() ? get_permalink(get_queried_object_id()) : home_url(add_query_arg(null, null));
+    echo '<link rel="canonical" href="' . esc_url($slimpress_canon) . '">';
     if (get_option('slim_noindex', true)) {
       echo '<meta name="robots" content="noindex,follow">';
     }
@@ -18,14 +21,14 @@
 <body>
 <main>
 <?php
-echo '<nav>' . slimpress_home_link_html() . '</nav>';
+echo wp_kses_post( '<nav>' . wp_kses_post( slimpress_home_link_html() ) . '</nav>' );
 
 if (is_home()) {
   // Home: show Posts and Pages as separate sections, and show the SLIM notice only once.
   echo '<h1>' . esc_html(slimpress_context_title()) . '</h1>';
 
   // Posts section
-  $posts_q = new WP_Query([
+  $slimpress_posts_q = new WP_Query([
     'post_type'           => 'post',
     'post_status'         => 'publish',
     'posts_per_page'      => 50,
@@ -36,11 +39,11 @@ if (is_home()) {
   ]);
 
   echo '<h2>' . esc_html__('Posts', 'slimpress') . '</h2>';
-  if ($posts_q->have_posts()) {
-  while ($posts_q->have_posts()) { $posts_q->the_post();
+  if ($slimpress_posts_q->have_posts()) {
+  while ($slimpress_posts_q->have_posts()) { $slimpress_posts_q->the_post();
     $title = get_the_title() ?: '(untitled)';
-    $perma = get_permalink();
-     $date = get_the_date('F j, Y'); echo '<a href="' . esc_url($perma) . '">' . esc_html($title) . '</a>' . ($date ? ' <small>(' . esc_html($date) . ')</small>' : '') . '<br><br>';
+    $slimpress_perma = get_permalink();
+     $slimpress_date = get_the_date('F j, Y'); echo '<a href="' . esc_url($slimpress_perma) . '">' . esc_html($title) . '</a>' . ($slimpress_date ? ' <small>(' . esc_html($slimpress_date) . ')</small>' : '') . '<br><br>';
   }
 } else {
   echo '<p>' . esc_html__('No posts found.', 'slimpress') . '</p>';
@@ -48,7 +51,7 @@ if (is_home()) {
 wp_reset_postdata();
 
   // Pages section
-  $pages_q = new WP_Query([
+  $slimpress_pages_q = new WP_Query([
     'post_type'      => 'page',
     'post_status'    => 'publish',
     'posts_per_page' => 50,
@@ -58,11 +61,11 @@ wp_reset_postdata();
   ]);
 
   echo '<h2>' . esc_html__('Pages', 'slimpress') . '</h2>';
-  if ($pages_q->have_posts()) {
-  while ($pages_q->have_posts()) { $pages_q->the_post();
+  if ($slimpress_pages_q->have_posts()) {
+  while ($slimpress_pages_q->have_posts()) { $slimpress_pages_q->the_post();
     $title = get_the_title() ?: '(untitled)';
-    $perma = get_permalink();
-     $date = get_the_date('F j, Y'); echo '<a href="' . esc_url($perma) . '">' . esc_html($title) . '</a>' . ($date ? ' <small>(' . esc_html($date) . ')</small>' : '') . '<br><br>';
+    $slimpress_perma = get_permalink();
+     $slimpress_date = get_the_date('F j, Y'); echo '<a href="' . esc_url($slimpress_perma) . '">' . esc_html($title) . '</a>' . ($slimpress_date ? ' <small>(' . esc_html($slimpress_date) . ')</small>' : '') . '<br><br>';
   }
 } else {
   echo '<p>' . esc_html__('No pages found.', 'slimpress') . '</p>';
@@ -82,8 +85,8 @@ wp_reset_postdata();
     while (have_posts()) { the_post();
       echo '<article>';
       echo '<h1>' . esc_html(get_the_title() ?: '(untitled)') . '</h1>';
-      echo slimpress_published_date_html(get_the_ID());
-      echo apply_filters('the_content', get_the_content('', false));
+echo wp_kses_post( slimpress_published_date_html( get_the_ID() ) );
+echo wp_kses_post( apply_filters( 'the_content', get_the_content( '', false ) ) );
       echo '</article>';
     }
 
@@ -93,23 +96,23 @@ wp_reset_postdata();
     echo '<ul>';
     while (have_posts()) { the_post();
       $title = get_the_title() ?: '(untitled)';
-      $perma = get_permalink();
-      $excerpt = slimpress_plain_excerpt(get_the_ID(), 220);
-      $date = get_the_date('F j, Y');
+      $slimpress_perma = get_permalink();
+      $slimpress_excerpt = slimpress_plain_excerpt(get_the_ID(), 220);
+      $slimpress_date = get_the_date('F j, Y');
       $type = get_post_type();
       echo '<li>';
-      echo '<a href="' . esc_url($perma) . '">' . esc_html($title) . '</a>';
-      if ($date) echo ' <small>(' . esc_html($date) . ')</small>';
+      echo '<a href="' . esc_url($slimpress_perma) . '">' . esc_html($title) . '</a>';
+      if ($slimpress_date) echo ' <small>(' . esc_html($slimpress_date) . ')</small>';
       if ($type && $type === 'page') echo ' <small>' . esc_html__('(Page)', 'slimpress') . '</small>';
-      if (!empty($excerpt)) echo '<div>' . esc_html($excerpt) . '</div>';
+      if (!empty($slimpress_excerpt)) echo '<div>' . esc_html($slimpress_excerpt) . '</div>';
       echo '</li>';
     }
     echo '</ul>';
 
-    $links = paginate_links([ 'type' => 'plain', 'prev_text' => '« Prev', 'next_text' => 'Next »' ]);
-    if ($links) {
-      $links = wp_strip_all_tags($links, true);
-      echo '<nav>' . esc_html($links) . '</nav>';
+    $slimpress_links = paginate_links([ 'type' => 'plain', 'prev_text' => '« Prev', 'next_text' => 'Next »' ]);
+    if ($slimpress_links) {
+      $slimpress_links = wp_strip_all_tags($slimpress_links, true);
+      echo '<nav>' . esc_html($slimpress_links) . '</nav>';
     }
 
   } else {
@@ -117,7 +120,7 @@ wp_reset_postdata();
     while (have_posts()) { the_post();
       echo '<article>';
       echo '<h1>' . esc_html(get_the_title()) . '</h1>';
-      echo slimpress_published_date_html(get_the_ID());
+echo wp_kses_post( slimpress_published_date_html( get_the_ID() ) );
       echo '<div>' . esc_html(slimpress_plain_excerpt(get_the_ID(), 300)) . '</div>';
       echo '</article>';
     }
@@ -130,6 +133,6 @@ wp_reset_postdata();
   else echo '<p>' . esc_html__('Nothing here.', 'slimpress') . '</p>';
 }
 ?>
-<?php echo '<footer>' . slimpress_notice_html() . '<nav>' . slimpress_home_link_html() . '</nav></footer>'; ?>
+<?php echo wp_kses_post( '<footer>' . wp_kses_post( slimpress_notice_html() ) . '<nav>' . wp_kses_post( slimpress_home_link_html() ) . '</nav></footer>' ); ?>
 </main>
 </body></html>

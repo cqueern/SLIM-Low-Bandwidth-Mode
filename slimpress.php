@@ -1,9 +1,9 @@
 <?php
 /**
- * Plugin Name: SLIMPress – SLIM Compliance for WordPress
+ * Plugin Name: SLIMPress – SLIM Compliance Mode
  * Plugin URI: https://github.com/cqueern/SLIMPress
  * Description: Serve your WordPress site in SLIM mode — single-request, text-first, and network-resilient.
- * Version: 0.1.12
+ * Version: 0.1.22
  * Author: SLIM Project
  * Author URI: https://github.com/cqueern
  * License: MIT
@@ -39,14 +39,14 @@ function slimpress_register_endpoint() {
   add_rewrite_endpoint('slim', EP_ALL);
 }
 
-register_activation_hook(__FILE__, function () {
+register_activation_hook( __FILE__, function () {
   slimpress_register_endpoint();
   flush_rewrite_rules();
-});
-register_deactivation_hook(__FILE__, function () {
-  flush_rewrite_rules();
-});
+} );
 
+register_deactivation_hook( __FILE__, function () {
+  flush_rewrite_rules();
+} );
 // ---------------- Settings (options) ----------------
 add_action('admin_init', function () {
   register_setting('slimpress', 'slim_force_sitewide', ['type' => 'boolean', 'default' => false]);
@@ -74,7 +74,7 @@ function slimpress_render_admin_page() {
     <p>
       <?php echo esc_html__('SLIM (Structured Low-bandwidth Information Markup) is a text-first publishing profile intended to keep content usable when networks are slow, unreliable, or constrained.', 'slimpress'); ?>
       <?php echo esc_html__('SLIMPress helps your WordPress site serve a simplified, single-request, script-free version of your pages when SLIM mode is enabled.', 'slimpress'); ?>
-      <a href="<?php echo $repo; ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html__('Project homepage', 'slimpress'); ?></a>
+      <a href="<?php echo esc_url( $repo ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html__('Project homepage', 'slimpress'); ?></a>
     </p>
 
     <form method="post" action="options.php">
@@ -118,7 +118,7 @@ function slimpress_render_admin_page() {
 add_action('init', 'slimpress_register_endpoint');
 
 function slimpress_is_frontend() {
-  $request_uri = $_SERVER['REQUEST_URI'] ?? '';
+  $request_uri = ( isset( $_SERVER['REQUEST_URI'] ) ? esc_url_raw( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '' ) ?? '';
   return !is_admin() && !wp_doing_ajax() && !wp_doing_cron()
          && (empty($request_uri) || strpos($request_uri, '/wp-json/') !== 0)
          && !defined('REST_REQUEST');
@@ -142,7 +142,7 @@ function slimpress_is_slim_view() {
 
 // ---------------- Include pages on the home list in SLIM mode ----------------
 add_action('pre_get_posts', function ($query) {
-  if (!slimpress_is_slim_view()) return;
+  if ( ! function_exists( 'slimpress_is_slim_view' ) || ! slimpress_is_slim_view() ) return;
   if (is_admin()) return;
   if (!$query->is_main_query()) return;
 
@@ -172,21 +172,36 @@ add_action('add_meta_boxes', function () {
   }
 });
 
-function slimpress_disable_box_render($post) {
-  wp_nonce_field('slim_disable_save', 'slim_disable_nonce');
-  $checked = get_post_meta($post->ID, '_slim_disable', true) ? 'checked' : '';
-  echo '<label><input type="checkbox" name="slim_disable" value="1" ' . $checked . '> ' .
-    esc_html__('Disable SLIM for this content', 'slimpress') . '</label>';
+function slimpress_disable_box_render( $post ) {
+  wp_nonce_field( 'slim_disable_save', 'slim_disable_nonce' );
+  $slimpress_disabled = get_post_meta( $post->ID, '_slim_disable', true ) ? 1 : 0;
+
+  echo '<label><input type="checkbox" name="slim_disable" value="1" ';
+  checked( $slimpress_disabled, 1, true );
+  echo '> ' . esc_html__( 'Disable SLIM for this content', 'slimpress' ) . '</label>';
 }
 
-add_action('save_post', function ($post_id) {
-  if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
-  if (!isset($_POST['slim_disable_nonce']) || !wp_verify_nonce($_POST['slim_disable_nonce'], 'slim_disable_save')) return;
-  if (!current_user_can('edit_post', $post_id)) return;
-  $disable = isset($_POST['slim_disable']) ? '1' : '0';
-  update_post_meta($post_id, '_slim_disable', $disable);
-});
+add_action( 'save_post', function ( $post_id ) {
+  if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
+    return;
+  }
 
+  if ( ! isset( $_POST['slim_disable_nonce'] ) ) {
+    return;
+  }
+
+  $slimpress_nonce = sanitize_text_field( wp_unslash( $_POST['slim_disable_nonce'] ) );
+  if ( ! wp_verify_nonce( $slimpress_nonce, 'slim_disable_save' ) ) {
+    return;
+  }
+
+  if ( ! current_user_can( 'edit_post', $post_id ) ) {
+    return;
+  }
+
+  $slimpress_disable = isset( $_POST['slim_disable'] ) ? '1' : '0';
+  update_post_meta( $post_id, '_slim_disable', $slimpress_disable );
+} );
 // ---------------- KSES Allowlist (no images/media) ----------------
 function slimpress_allowed_html() {
   return [
@@ -331,7 +346,7 @@ function slimpress_context_title() {
 
 // ---------------- Template routing ----------------
 add_filter('template_include', function ($template) {
-  if (slimpress_is_slim_view()) {
+  if ( function_exists( 'slimpress_is_slim_view' ) && slimpress_is_slim_view() ) {
     return SLIMPRESS_PATH . 'templates/slim.php';
   }
   return $template;
@@ -339,13 +354,13 @@ add_filter('template_include', function ($template) {
 
 // ---------------- Headers / Head hardening ----------------
 add_action('send_headers', function () {
-  if (!slimpress_is_slim_view()) return;
+  if ( ! function_exists( 'slimpress_is_slim_view' ) || ! slimpress_is_slim_view() ) return;
   header("Content-Security-Policy: default-src 'none'; img-src 'none'; media-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'self'");
   header('X-Content-Type-Options: nosniff');
 });
 
 add_action('init', function () {
-  if (!slimpress_is_slim_view()) return;
+  if ( ! function_exists( 'slimpress_is_slim_view' ) || ! slimpress_is_slim_view() ) return;
   remove_action('wp_head', 'print_emoji_detection_script', 7);
   remove_action('wp_print_styles', 'print_emoji_styles');
   remove_action('wp_head', 'wp_oembed_add_discovery_links');
@@ -357,7 +372,7 @@ add_action('init', function () {
 
 // ---------------- Content Filter (KSES → DOM → KSES + Notice + Home) ----------------
 add_filter('the_content', function ($html) {
-  if (!slimpress_is_slim_view()) return $html;
+  if ( ! function_exists( 'slimpress_is_slim_view' ) || ! slimpress_is_slim_view() ) return $html;
   $html = slimpress_kses_sanitize($html);
   $html = slimpress_dom_cleanup($html);
   $html = slimpress_kses_sanitize($html);
@@ -367,5 +382,4 @@ add_filter('the_content', function ($html) {
 
 // ---------------- i18n ----------------
 add_action('plugins_loaded', function () {
-  load_plugin_textdomain('slimpress', false, dirname(plugin_basename(__FILE__)) . '/languages');
 });

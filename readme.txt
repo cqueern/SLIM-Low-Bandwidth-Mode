@@ -1,10 +1,10 @@
-=== SLIMPress – SLIM Compliance for WordPress ===
+=== SLIMPress – SLIM Compliance Mode ===
 Contributors: cqueern
 Tags: performance, accessibility, minimal, text-only, security
 Requires at least: 6.5
-Tested up to: 6.6
+Tested up to: 6.9
 Requires PHP: 8.0
-Stable tag: 0.1.12
+Stable tag: 0.1.22
 License: MIT
 License URI: https://opensource.org/license/mit/
 
