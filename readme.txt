@@ -2,7 +2,7 @@
 Contributors: cqueern
 Tags: performance, accessibility, minimal, text-only, security
 Requires at least: 6.5
-Tested up to: 6.9
+Tested up to: 7.0
 Requires PHP: 8.0
 Stable tag: 0.1.25
 License: MIT
