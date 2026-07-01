@@ -3,7 +3,7 @@
  * Plugin Name: SLIM Low Bandwidth Mode
  * Plugin URI: https://github.com/cqueern/slim-low-bandwidth-mode
  * Description: Serve your WordPress site in SLIM mode — single-request, text-first, and network-resilient.
- * Version: 0.1.25
+ * Version: 0.1.26
  * Author: SLIM Project
  * Author URI: https://github.com/cqueern
  * License: MIT
@@ -33,7 +33,7 @@ function slim_low_bandwidth_mode_sanitize_bool( $value ) {
 }
 
 if (!defined('ABSPATH')) { exit; }
-define('SLIMPRESS_VERSION', '0.1.10');
+define('SLIMPRESS_VERSION', '0.1.26');
 define('SLIMPRESS_PATH', plugin_dir_path(__FILE__));
 
 // ---------------- Helpers ----------------
