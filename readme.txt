@@ -4,7 +4,7 @@ Tags: performance, accessibility, minimal, text-only, security
 Requires at least: 6.5
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 0.1.25
+Stable tag: 0.1.26
 License: MIT
 License URI: https://opensource.org/license/mit/
 
