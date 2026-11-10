@@ -9,5 +9,6 @@ defined( 'WP_UNINSTALL_PLUGIN' ) || exit;
 // Options.
 delete_option( 'slim_force_sitewide' );
 delete_option( 'slim_noindex' );
+delete_option( 'slim_respect_save_data' );
 
 // If you ever add network-wide options, also delete_site_option() here.
