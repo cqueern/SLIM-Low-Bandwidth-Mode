@@ -4,7 +4,7 @@ Tags: performance, accessibility, minimal, text-only, security
 Requires at least: 6.5
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 0.1.26
+Stable tag: 0.1.27
 License: MIT
 License URI: https://opensource.org/license/mit/
 
@@ -22,6 +22,18 @@ Project homepage: https://github.com/cqueern/slim-low-bandwidth-mode
 No Warranty: This plugin is provided "AS IS", without warranty of any kind, express or implied. Use at your own risk.
 
 == Frequently Asked Questions ==
+
+= How does Save-Data support work? =
+
+While the plugin is active, visitors sending Save-Data: on receive the same SLIM representation as site-wide mode, without redirects. The header value is case-insensitive. Requests without the header, or with any other value, use the normal site unless site-wide mode or explicit SLIM selection applies. The decision is made for every request over HTTP or HTTPS; no cookie or remembered visitor preference is used.
+
+The "Honor Save-Data requests" setting defaults to enabled on both fresh installations and upgrades that have no saved setting. Saved on/off choices survive updates and deactivation/reactivation. Disabling it only disables header-triggered SLIM; site-wide mode remains independent. Per-content "Disable SLIM" exclusions apply to both automatic modes. Explicit SLIM endpoint behavior is unchanged. Admin, login, AJAX, cron, REST, feeds, trackbacks, robots, and favicon requests are excluded from automatic SLIM rendering.
+
+= What if my site uses caching? =
+
+With Save-Data support enabled, eligible front-end responses include Vary: Save-Data on both the regular and SLIM versions, preserving existing Vary values. Your page cache, hosting cache, reverse proxy, or CDN must forward Save-Data to WordPress and keep separate cached versions based on that header. If it cannot, bypass page caching for these pages. Some caches serve responses before WordPress runs or ignore Vary; the plugin cannot configure every external cache automatically.
+
+Purge existing cached pages when installing this update, when toggling either automatic mode, or when changing per-content exclusions. Verify the same URL with and without Save-Data: on in both request orders to ensure the versions do not get mixed. Browser support for sending Save-Data varies; no header does not necessarily mean a visitor has no data-saving preference.
 
 = When would I use this? =
 
@@ -44,9 +56,15 @@ You can decide whether search engines index SLIM versions of your content in the
 == Installation ==
 1. Upload the plugin ZIP via Plugins → Add New → Upload Plugin, or upload the `slim-low-bandwidth-mode` folder to `/wp-content/plugins/`.
 2. Activate SLIM Low Bandwidth Mode through the Plugins menu.
-3. Go to Settings → SLIM Low Bandwidth Mode and enable SLIM mode.
+3. Save-Data support is enabled automatically when the plugin is active. Go to Settings → SLIM Low Bandwidth Mode to turn it off or enable site-wide SLIM mode.
 
 == Changelog ==
+= 0.1.27 =
+* Add enabled-by-default, per-request Save-Data support with an independent administrator setting and per-content exclusions.
+* Preserve saved preferences across updates and reactivation; remove the new option on uninstall.
+* Vary regular and SLIM responses by Save-Data while preserving existing Vary values; document cache requirements.
+* Exclude non-page requests from automatic SLIM and defer head cleanup until the query is resolved.
+
 = 0.1.12 =
 * Fix: show post/page titles in SLIM singular views.
 * Add Home link + SLIM notice to singular views.

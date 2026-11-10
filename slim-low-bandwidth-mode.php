@@ -3,7 +3,7 @@
  * Plugin Name: SLIM Low Bandwidth Mode
  * Plugin URI: https://github.com/cqueern/slim-low-bandwidth-mode
  * Description: Serve your WordPress site in SLIM mode — single-request, text-first, and network-resilient.
- * Version: 0.1.26
+ * Version: 0.1.27
  * Author: SLIM Project
  * Author URI: https://github.com/cqueern
  * License: MIT
@@ -33,7 +33,7 @@ function slim_low_bandwidth_mode_sanitize_bool( $value ) {
 }
 
 if (!defined('ABSPATH')) { exit; }
-define('SLIMPRESS_VERSION', '0.1.26');
+define('SLIMPRESS_VERSION', '0.1.27');
 define('SLIMPRESS_PATH', plugin_dir_path(__FILE__));
 
 // ---------------- Helpers ----------------
@@ -68,6 +68,7 @@ register_deactivation_hook( __FILE__, function () {
 // ---------------- Settings (options) ----------------
 add_action('admin_init', function () {
   register_setting( 'slim-low-bandwidth-mode', 'slim_force_sitewide', ['type' => 'boolean', 'default' => false, 'sanitize_callback' => 'slim_low_bandwidth_mode_sanitize_bool'] );
+  register_setting( 'slim-low-bandwidth-mode', 'slim_respect_save_data', ['type' => 'boolean', 'default' => true, 'sanitize_callback' => 'slim_low_bandwidth_mode_sanitize_bool'] );
   register_setting( 'slim-low-bandwidth-mode', 'slim_noindex', ['type' => 'boolean', 'default' => true, 'sanitize_callback' => 'slim_low_bandwidth_mode_sanitize_bool'] );
 });
 
@@ -111,6 +112,19 @@ function slim_low_bandwidth_mode_render_admin_page() {
         </tr>
 
         <tr>
+          <th scope="row"><?php echo esc_html__('Honor Save-Data requests', 'slim-low-bandwidth-mode'); ?></th>
+          <td>
+            <input type="hidden" name="slim_respect_save_data" value="0">
+            <label>
+              <input type="checkbox" name="slim_respect_save_data" value="1" <?php checked((bool) get_option('slim_respect_save_data', true), true); ?>>
+              <?php echo esc_html__('Serve SLIM when a visitor sends Save-Data: on', 'slim-low-bandwidth-mode'); ?>
+            </label>
+            <p class="description"><?php echo esc_html__('Enabled by default, including after upgrades. Applies per request over HTTP or HTTPS, respects per-content exclusions, and uses no cookies. Turning this off does not disable site-wide SLIM mode.', 'slim-low-bandwidth-mode'); ?></p>
+            <p class="description"><?php echo esc_html__('If you use a page cache or CDN, configure it to forward Save-Data and cache separate versions using Vary: Save-Data, or bypass its page cache. Purge cached pages after changing SLIM settings or per-content exclusions.', 'slim-low-bandwidth-mode'); ?></p>
+          </td>
+        </tr>
+
+        <tr>
           <th scope="row"><?php echo esc_html__('Noindex SLIM views', 'slim-low-bandwidth-mode'); ?></th>
           <td>
             <label>
@@ -136,10 +150,14 @@ function slim_low_bandwidth_mode_render_admin_page() {
 add_action('init', 'slim_low_bandwidth_mode_register_endpoint');
 
 function slim_low_bandwidth_mode_is_frontend() {
+  global $pagenow;
   $request_uri = ( isset( $_SERVER['REQUEST_URI'] ) ? esc_url_raw( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '' ) ?? '';
   return !is_admin() && !wp_doing_ajax() && !wp_doing_cron()
          && (empty($request_uri) || strpos($request_uri, '/wp-json/') !== 0)
-         && !defined('REST_REQUEST');
+         && !(defined('REST_REQUEST') && REST_REQUEST)
+         && $pagenow !== 'wp-login.php'
+         && !get_query_var('rest_route')
+         && !is_feed() && !is_trackback() && !is_robots() && !is_favicon();
 }
 
 function slim_low_bandwidth_mode_is_request_opted_out() {
@@ -152,10 +170,18 @@ function slim_low_bandwidth_mode_is_request_opted_out() {
   return false;
 }
 
+function slim_low_bandwidth_mode_requests_save_data() {
+  // Only the explicit, case-insensitive token 'on' opts this request in.
+  return isset($_SERVER['HTTP_SAVE_DATA']) && is_string($_SERVER['HTTP_SAVE_DATA'])
+         && strtolower(trim(wp_unslash($_SERVER['HTTP_SAVE_DATA']))) === 'on';
+}
+
 function slim_low_bandwidth_mode_is_slim_view() {
   if (get_query_var('slim')) return true;
-  if (get_option('slim_force_sitewide') && slim_low_bandwidth_mode_is_frontend() && !slim_low_bandwidth_mode_is_request_opted_out()) return true;
-  return false;
+  if (!slim_low_bandwidth_mode_is_frontend() || slim_low_bandwidth_mode_is_request_opted_out()) return false;
+  // A missing option defaults on for both new installs and upgrades. Never reset a saved choice.
+  return (bool) get_option('slim_force_sitewide', false)
+         || (get_option('slim_respect_save_data', true) && slim_low_bandwidth_mode_requests_save_data());
 }
 
 // ---------------- Include pages on the home list in SLIM mode ----------------
@@ -371,13 +397,28 @@ add_filter('template_include', function ($template) {
 }, 999);
 
 // ---------------- Headers / Head hardening ----------------
+add_filter('wp_headers', function ($headers) {
+  // Vary both regular and SLIM responses at the same URL, even when the hint is absent.
+  if (!get_option('slim_respect_save_data', true) || !slim_low_bandwidth_mode_is_frontend()) return $headers;
+  foreach ($headers as $name => $value) {
+    if (strcasecmp($name, 'Vary') !== 0) continue;
+    $tokens = array_map('trim', explode(',', strtolower($value)));
+    if (!in_array('*', $tokens, true) && !in_array('save-data', $tokens, true)) {
+      $headers[$name] = $value === '' ? 'Save-Data' : $value . ', Save-Data';
+    }
+    return $headers;
+  }
+  $headers['Vary'] = 'Save-Data';
+  return $headers;
+});
+
 add_action('send_headers', function () {
   if ( ! function_exists( 'slim_low_bandwidth_mode_is_slim_view' ) || ! slim_low_bandwidth_mode_is_slim_view() ) return;
   header("Content-Security-Policy: default-src 'none'; img-src 'none'; media-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'self'");
   header('X-Content-Type-Options: nosniff');
 });
 
-add_action('init', function () {
+add_action('wp', function () {
   if ( ! function_exists( 'slim_low_bandwidth_mode_is_slim_view' ) || ! slim_low_bandwidth_mode_is_slim_view() ) return;
   remove_action('wp_head', 'print_emoji_detection_script', 7);
   remove_action('wp_print_styles', 'print_emoji_styles');

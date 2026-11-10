@@ -25,7 +25,7 @@ minimums are WordPress 6.5 and PHP 8.0; the readme declares testing through Word
   excerpt helpers, template routing, and response headers.
 - `templates/slim.php`: complete SLIM HTML document and view-specific rendering.
   It deliberately omits `wp_head()` and `wp_footer()` to avoid injected assets.
-- `uninstall.php`: self-contained uninstall handler; currently deletes the two
+- `uninstall.php`: self-contained uninstall handler; currently deletes the three
   plugin options and leaves post metadata in place.
 - `readme.txt`: WordPress plugin metadata, installation instructions, and changelog.
 - `security.md`: security support, private reporting, and privacy policy.
@@ -33,10 +33,11 @@ minimums are WordPress 6.5 and PHP 8.0; the readme declares testing through Word
 - `assets/`: plugin listing banner, icon, and screenshots, not front-end dependencies.
 - `LICENSE`: MIT license.
 
-There is currently no Composer/npm manifest, build pipeline, CI workflow, or
-automated test suite in the repository. Do not invent commands for nonexistent
-tooling. The PHP implementation uses DOM/libxml and mbstring functionality; verify
-those extensions are available when setting up a runtime.
+There is no Composer/npm manifest, build pipeline, or CI workflow.
+`tests/save-data.py` provides HTTP and settings integration checks against an
+existing disposable WordPress site; see `tests/README.md`. Do not invent commands
+for nonexistent tooling. The PHP implementation uses DOM/libxml and mbstring
+functionality; verify those extensions are available when setting up a runtime.
 
 ## Current behavior and interfaces
 
@@ -44,12 +45,18 @@ those extensions are available when setting up a runtime.
   `manage_options`. The WordPress Settings API supplies form protection.
 - `slim_force_sitewide` is a boolean option, default false. When enabled, eligible
   front-end requests use the SLIM template without redirects.
+- `slim_respect_save_data` is a boolean option, default true on fresh installs and
+  upgrades with no stored value. Saved choices survive reactivation and updates.
+  Case-insensitive `Save-Data: on` selects automatic SLIM per request over HTTP or
+  HTTPS, without cookies, subject to front-end eligibility and singular opt-out.
+  Site-wide mode remains independent of this setting.
 - `slim_noindex` is a boolean option, default true. SLIM documents emit
   `noindex,follow` when enabled and include a canonical link.
 - The `slim` rewrite endpoint is registered with `EP_ALL`. Activation registers
   it and flushes rewrite rules; deactivation also flushes rules.
 - `slim_low_bandwidth_mode_is_slim_view()` first checks a truthy `slim` query
-  variable, then the site-wide option, front-end eligibility, and singular opt-out.
+  variable, then front-end eligibility and singular opt-out before evaluating the
+  automatic site-wide and Save-Data modes.
   Explicit endpoint selection currently precedes the opt-out check.
 - `_slim_disable` is boolean post metadata, exposed through REST, with an editor
   box on public post types. The normal save handler checks a nonce, autosave state,
@@ -73,6 +80,12 @@ those extensions are available when setting up a runtime.
 - SLIM responses attempt to send a restrictive Content-Security-Policy and
   `X-Content-Type-Options: nosniff`. Verify actual headers when changing routing;
   request detection runs at several different WordPress lifecycle stages.
+- Automatic rendering excludes admin, login, AJAX, cron, REST, feeds, trackbacks,
+  robots, and favicon requests. Head cleanup runs on `wp`, after query resolution.
+- With Save-Data enabled, `wp_headers` appends `Save-Data` to `Vary` for both
+  normal and SLIM front-end responses, preserving existing values and `*`.
+  External caches must forward the request header and honor the variation, or
+  bypass page caching; purge cached pages after settings/exclusion changes.
 
 ## Implementation guidance
 
@@ -122,7 +135,7 @@ php -l languages/index.php
 Syntax checks do not replace WordPress integration testing. On a disposable local
 WordPress installation with DOM and mbstring available, exercise relevant cases:
 
-1. Activate/deactivate the plugin; save both settings; confirm normal rendering
+1. Activate/deactivate the plugin; save all three settings; confirm normal rendering
    with site-wide mode off and SLIM rendering with it on.
 2. Test a posts index, static front page, post, page, archive, search (including no
    results), and 404. Check titles, dates, Unicode text, excerpts, links, and notice.
