@@ -13,7 +13,14 @@ Serve your WordPress site in SLIM mode — single-request, text-first, and netwo
 == Description ==
 SLIM Low Bandwidth Mode helps your WordPress site serve a simplified, script-free, text-first representation of posts and pages intended for slow, unreliable, or constrained networks.
 
-It adds a Settings → SLIM Low Bandwidth Mode page where administrators can enable SLIM mode and configure a small set of options.
+SLIM can be applied automatically in two ways:
+
+* Honor Save-Data requests (enabled by default): serve SLIM only for eligible requests that include Save-Data: on, reflecting the visitor's preference for reduced data use.
+* Force SLIM mode site-wide (disabled by default): serve SLIM for all eligible front-end requests, whether or not they include the header.
+
+Manage both options under Settings → SLIM Low Bandwidth Mode. Each automatic mode respects the post/page editor's "Disable SLIM for this content" setting. The separate "Noindex SLIM views" option is enabled by default and controls whether SLIM documents include noindex,follow.
+
+Save-Data support works per request over HTTP or HTTPS, without redirects or visitor-preference cookies. Saved administrator choices are preserved through updates and deactivation/reactivation. See the caching FAQ before deploying to a site with a page cache or CDN.
 
 SLIM Low Bandwidth Mode is provided "as is", without warranty of any kind. See the included LICENSE file for details.
 
@@ -56,7 +63,9 @@ You can decide whether search engines index SLIM versions of your content in the
 == Installation ==
 1. Upload the plugin ZIP via Plugins → Add New → Upload Plugin, or upload the `slim-low-bandwidth-mode` folder to `/wp-content/plugins/`.
 2. Activate SLIM Low Bandwidth Mode through the Plugins menu.
-3. Save-Data support is enabled automatically when the plugin is active. Go to Settings → SLIM Low Bandwidth Mode to turn it off or enable site-wide SLIM mode.
+3. Save-Data support defaults to enabled while the plugin is active, including after an upgrade from a version without this setting. A previously saved on/off choice is preserved.
+4. Go to Settings → SLIM Low Bandwidth Mode to change "Honor Save-Data requests", enable site-wide SLIM, or configure noindex behavior.
+5. If a page cache or CDN is in use, follow the caching FAQ and purge existing cached pages before verifying the regular and SLIM versions.
 
 == Changelog ==
 = 0.1.27 =
@@ -73,6 +82,9 @@ You can decide whether search engines index SLIM versions of your content in the
 * Enhancement: Add an extra blank line between homepage entries in SLIM mode.
 
 == Upgrade Notice ==
+= 0.1.27 =
+Save-Data support defaults to enabled for new installations and upgrades without a saved setting. Existing on/off choices are preserved. Review Settings → SLIM Low Bandwidth Mode and the caching FAQ; purge cached pages when deploying this update.
+
 = 0.1.10 =
 Minor formatting improvement in SLIM mode output.
 
